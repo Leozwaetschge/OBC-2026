@@ -6,6 +6,7 @@ Two browser windows on the same laptop:
 Both read and write event_state.json, so the TV shows every change within a second."""
 import base64                                                          # room SVG and logo as images (data URI)
 import html                                                            # names in the HTML tables
+import json                                                            # state as text: did something change? (phone page)
 import os                                                              # path of the logo
 
 import streamlit as st                                                 # GUI
@@ -151,9 +152,55 @@ def tv_page():
     board()
 
 
+# ---------------------------------------------------------------- phone page
+def phone_page():
+    """/phone: for phones on mobile data. Only the small clock is sent every 1 s; room plan, next round and ranking
+    are sent again only when the state changed (result, next round, timer start) -> little data, no lag."""
+    st.markdown(CSS + "<style>[data-testid='stSidebar'],[data-testid='stHeader']{display:none;} "
+                ".block-container{padding:.3rem .5rem;}</style>", unsafe_allow_html=True)   # no sidebar/header, small margins
+    state = T.load()                                                   # state at this full redraw
+    st.session_state["phone_state"] = json.dumps(state, sort_keys=True)   # remembered: compared by the clock
+
+    @st.fragment(run_every=1)                                          # only this small part every 1 s
+    def clock():
+        now = T.load()                                                 # current state
+        if json.dumps(now, sort_keys=True) != st.session_state["phone_state"]:   # something changed
+            st.rerun(scope="app")                                      # -> redraw the whole page once
+        phase, left = T.clock(now)                                     # phase and seconds left
+        label = {"wait": "Bereit", "game": f"Spiel {mmss(left or 0)}", "change": f"Wechsel {mmss(left or 0)}",
+                 "over": "Zeit um"}[phase]                             # same texts as the TV
+        st.markdown(f'<div class="clock {phase}">{label}</div>', unsafe_allow_html=True)
+    clock()
+
+    rounds = len(state["schedule"])                                    # number of rounds
+    cur = state["current"]                                             # current round
+    ring_round = T.is_ring_round(state, cur)                           # ring of fire round?
+    half = state.get("ring_half", 0)                                   # half of the ring round
+    if cur < rounds:                                                   # current room
+        games = T.active_games(state, cur, half)
+        res = {g["table"]: T.result(state, cur, g if ring_round else g["table"])
+               for g in games if T.result(state, cur, g if ring_round else g["table"])}
+        st.markdown(f'<div class="section">Runde {cur + 1}/{rounds}</div>'
+                    + svg_img(room_svg(state["cfg"]["tables"], games, res, ring_of_fire=ring_round)), unsafe_allow_html=True)
+    if ring_round and half == 0:                                       # next round (as on the TV)
+        nxt, nhalf = cur, 1
+    else:
+        nxt, nhalf = cur + 1, 0
+    st.markdown('<div class="section">Nächste Runde</div>' + next_round_html(state, nxt, nhalf), unsafe_allow_html=True)
+    st.markdown(f'<div class="ranking-title">Rangliste</div>{ranking_html(state)}', unsafe_allow_html=True)   # ranking
+
+
 # ---------------------------------------------------------------- admin page
 def admin_page():
     st.markdown(CSS, unsafe_allow_html=True)
+    if not st.session_state.get("admin_ok"):                           # not logged in yet in this browser tab
+        pw = st.text_input("Admin password", type="password")          # password field
+        if pw and pw == st.secrets.get("admin_password", ""):          # correct (from .streamlit/secrets.toml, never in git)
+            st.session_state["admin_ok"] = True                        # remember for this session
+            st.rerun()                                                 # show the admin page
+        elif pw:
+            st.error("Wrong password")                                 # wrong input
+        st.stop()                                                      # nothing else of the admin page without password
     state = T.load()
     rounds = len(state["schedule"])
 
@@ -296,5 +343,6 @@ def admin_page():
 
 
 pg = st.navigation([st.Page(tv_page, title="TV", url_path="tv", default=True),
+                    st.Page(phone_page, title="Phone", url_path="phone"),   # phones: refresh 4 s, little data
                     st.Page(admin_page, title="Admin", url_path="admin")], position="hidden")
 pg.run()
