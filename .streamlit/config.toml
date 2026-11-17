@@ -1,0 +1,4 @@
+[theme]
+base = "light"              # always light (white), also if the Mac is in dark mode
+primaryColor = "#7CC800"    # buttons and sliders in the OBC green
+textColor = "#2E1A5E"       # dark purple of the logo outlines
