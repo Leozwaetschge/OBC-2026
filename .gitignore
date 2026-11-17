@@ -1,0 +1,6 @@
+event_state.json
+event_state.json.tmp
+__pycache__/
+.DS_Store
+obcvenv/
+.venv/
