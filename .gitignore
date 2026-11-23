@@ -7,3 +7,10 @@ obcvenv/
 .streamlit/secrets.toml
 tunnel.log
 streamlit.log
+event_state.json.broken
+.event_state_*.tmp
+event_backups/
+.claude_review/
+~$*
+QR_phone.png
+OBC Player.xlsx
