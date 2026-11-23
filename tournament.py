@@ -30,7 +30,14 @@ DEFAULTS = {                                                           # flexibl
     "seed": 2026,                                                      # random seed of the draw (same seed = same schedule)
 }
 
-DUMMY_NAMES = [f"Spieler {i}" for i in range(1, 49)]   # placeholders (real names removed 23 Nov)
+PLAYERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "players.txt")   # 23 Nov: real names, one per
+                                                                       # line, only on the laptop (in .gitignore: the repo
+                                                                       # is public, no member names in git)
+if os.path.isfile(PLAYERS_FILE):                                       # the real player list of the event
+    with open(PLAYERS_FILE, encoding="utf-8") as _f:
+        DUMMY_NAMES = [line.strip() for line in _f if line.strip()]    # one name per line, empty lines ignored
+else:                                                                  # no list (e.g. a fresh clone from GitHub)
+    DUMMY_NAMES = [f"Spieler {i}" for i in range(1, 49)]               # placeholders "Spieler 1" ... "Spieler 48"
 
 
 KO_ROUND_COUNT = 4  # intermediate KO, quarterfinal, semifinal, final
